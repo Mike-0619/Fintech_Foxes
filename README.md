@@ -20,12 +20,12 @@ Banks need accurate credit scoring models but cannot share customer data due to 
 
 | Approach | Accuracy | Privacy | Data Sharing |
 |----------|----------|---------|--------------|
-| **Local Only** | 56.6% | ✅ Full | None |
-| **FL-MLP** | 79.4% | ✅ Full | Weights only |
-| **FL-LSTM** | 81.0% | ✅ Full | Weights only |
-| **Centralized** | 81.3% | ❌ None | All data |
+| **Local Only** | 56.7% | ✅ Full | None |
+| **FL-MLP** | 80.7% | ✅ Full | Weights only |
+| **FL-LSTM** | 77.9% | ✅ Full | Weights only |
+| **Centralized** | 81.4% | ❌ None | All data |
 
-**Key Finding:** FL achieves 99.7% of centralized performance with zero data sharing.
+**Key Finding:** FL-MLP achieves 99.1% of centralized performance with zero data sharing.
 
 ---
 
@@ -102,8 +102,8 @@ Output (fl_experiment_*/):
 
 **Splits:**
 - Train: 16,800 samples (federated across 5 clients)
-- Calibration: 3,600 samples
-- Evaluation: 3,600 samples  
+- Validation: 3,600 samples
+- Calibration: 1,800 samples
 - Test: 6,000 samples
 
 **Non-IID Simulation:** Dirichlet(α=0.5) creates heterogeneous data distributions
@@ -112,13 +112,13 @@ Output (fl_experiment_*/):
 
 **FL-MLP:**
 ```
-Input(23) → Dense(256) → Dense(96) → Dense(1) → Sigmoid
+Input(23) → Dense(64) → Dense(48) → Dense(1) → Sigmoid
 ```
 
 **FL-LSTM:**
 ```
 Static(5) → Dense(32) ─┐
-Temporal(18) → LSTM(32, 4 layers) ─┤→ Concat → Dense(64) → Dense(32) → Dense(1)
+Temporal(6) → LSTM(32, 4 layers) ─┤→ Concat → Dense(64) → Dense(32) → Dense(1)
 ```
 
 ### 3. Federated Training
@@ -151,25 +151,35 @@ FOR round = 1 to 15:
 ### Model Performance
 
 ```
-FL-MLP:   79.4% accuracy, ECE=0.056 (Beta calibrated)
-FL-LSTM:  81.0% accuracy, ECE=0.072 (Platt calibrated)
-Central:  81.3% accuracy, ECE=0.030 (Temperature calibrated)
+FL-MLP:   80.7% accuracy, ECE=0.062 (Beta calibrated)
+FL-LSTM:  77.9% accuracy, ECE=0.060 (Beta calibrated)
+Central:  81.4% accuracy, ECE=0.040 (Uncalibrated)
+Logistic Regression: 67.5% accuracy, ECE=0.236
+Local NN (Avg): 56.7% accuracy, ECE=0.358
 ```
 
 ### Calibration Impact
 
 ```
-Before: ECE = 0.227 (miscalibrated)
-After:  ECE = 0.056 (well-calibrated)
-Improvement: 75.3% reduction
+Before: ECE = 0.193 (FL-MLP miscalibrated)
+After:  ECE = 0.062 (well-calibrated)
+Improvement: 68.0% reduction
 ```
+
+### Best Calibration Methods per Model
+
+| Model | Best Method | ECE | Accuracy |
+|-------|-------------|-----|----------|
+| FL-MLP | Beta | 0.062 | 80.7% |
+| FL-LSTM | Beta | 0.060 | 77.9% |
+| Central NN | Uncalibrated | 0.040 | 81.4% |
 
 ### Convergence
 
 Both models converge within 15 rounds:
-- Round 1: 73-76%
-- Round 5: 73-77%
-- Round 15: 73-78% (stable)
+- Round 1: ~73%
+- Round 5: ~75%
+- Round 15: ~77-81% (stable)
 
 ---
 
@@ -183,10 +193,14 @@ NUM_CLIENTS = 5           # Number of banks
 NUM_ROUNDS = 15           # FL rounds
 DIRICHLET_ALPHA = 0.5     # Non-IID intensity
 
-# Model Architecture
-LEARNING_RATE = 0.005
+# Model Architecture (Base values, tuned via Optuna)
+LEARNING_RATE = 0.005     # Base learning rate
 BATCH_SIZE = 64
-DROPOUT = 0.2
+DROPOUT = 0.2             # Base dropout
+
+# Tuned Hyperparameters (from experiment):
+# MLP: lr=0.00685, hidden=[64,48], dropout=0.183
+# LSTM: lr=0.00622, hidden=32, layers=4, dropout=0.414
 
 # Optimization
 TUNE_N_TRIALS = 10        # Optuna trials
@@ -206,12 +220,18 @@ Each run creates `fl_experiment_YYYYMMDD_HHMMSS/` with:
 **Results:**
 - `final_model_comparison.csv` - Performance table
 - `calibration_detailed_results.csv` - All calibration metrics
+- `calibration_best_per_model.csv` - Best calibration per model
 - `best_hyperparams.json` - Optimal hyperparameters
+- `optuna_tuning_results.csv` - Hyperparameter tuning results
 
 **Visualizations:**
 - `Fig1_Convergence.png` - Training curves
 - `Fig2_Calibration.png` - Reliability diagrams
 - `Fig3_FinalComparison.png` - Model comparison
+- `calibration_heatmap_all_models.png` - Calibration heatmap
+- `01_client_heterogeneity.png` - Data distribution
+- `07_shap_summary.png` - Feature importance
+- `lime_explanation.html` - LIME interpretability
 
 ---
 
@@ -222,7 +242,7 @@ from load_model import load_model_from_experiment
 
 # Load trained model
 model, config, scaler = load_model_from_experiment(
-    'fl_experiment_20260111_133448',
+    'fl_experiment_20260116_153133',
     model_type='mlp'
 )
 

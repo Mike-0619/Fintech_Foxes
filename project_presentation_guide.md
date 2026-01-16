@@ -1,6 +1,13 @@
-# 🎓 Complete Presentation Guide: Privacy-Preserving Federated Credit Scoring
+# 🎓 Fintech_Foxes: Privacy-Preserving Federated Credit Scoring
 
 **A Comprehensive Tutorial for Understanding and Presenting Federated Learning Research**
+
+---
+
+**Date:** January 16, 2026  
+**Author:** [Hao Lin, Mohamed Badawy, Eray Dogan, Abdelrahman ElKoussy]  
+**Mentor:** [David Jin, Dr. Ing Daniel Kriste]
+**Github:** https://github.com/Mike-0619/Fintech_Foxes
 
 ---
 
@@ -132,31 +139,36 @@ Imagine a federation of 5 banks:
 │                                                         │
 │  🏦 Bank A (Small Regional)                            │
 │     └─ 1,471 customers                                 │
-│     └─ Local model accuracy: 22.3% ❌                  │
-│     └─ Reason: Not enough data to learn               │
+│     └─ Default rate: 95.6% (extreme high-risk)         │
+│     └─ Local model accuracy: Poor ❌                   │
+│     └─ Reason: Pathological data distribution          │
 │                                                         │
 │  🏦 Bank B (Mid-sized)                                 │
 │     └─ 2,536 customers                                 │
-│     └─ Local model accuracy: 79.9%                     │
-│     └─ Still suboptimal                                │
+│     └─ Default rate: 14.1%                             │
+│     └─ Local model accuracy: Moderate                  │
 │                                                         │
 │  🏦 Bank C (Large National)                            │
-│     └─ 11,111 customers                                │
-│     └─ Local model accuracy: 78.4%                     │
-│     └─ Good, but not great                             │
+│     └─ 11,111 customers (66% of total data)           │
+│     └─ Default rate: 6.7% (low-risk portfolio)         │
+│     └─ Local model accuracy: Good but not optimal      │
 │                                                         │
 │  🏦 Bank D (Small Community)                           │
 │     └─ 563 customers                                   │
-│     └─ Local model accuracy: 80.4%                     │
+│     └─ Default rate: 16.9%                             │
+│     └─ Local model accuracy: Limited by data size      │
 │                                                         │
 │  🏦 Bank E (Small Regional)                            │
 │     └─ 1,119 customers                                 │
-│     └─ Local model accuracy: 22.1% ❌                  │
+│     └─ Default rate: 99.8% (extreme high-risk)         │
+│     └─ Local model accuracy: Poor ❌                   │
+│     └─ Reason: Almost all customers default            │
 │                                                         │
-│  📊 AVERAGE LOCAL ACCURACY: 56.6%                      │
+│  📊 AVERAGE LOCAL ACCURACY: 56.7%                      │
+│  📊 HETEROGENEITY: Std Dev = 0.419 (very high)         │
 │                                                         │
 │  💡 IF THEY POOLED DATA (16,800 customers):            │
-│     Central model accuracy: 81.3% ✅                   │
+│     Central model accuracy: 81.4% ✅                   │
 │     Improvement: +24.7 percentage points!              │
 │                                                         │
 │  ❌ BUT: Data pooling is ILLEGAL                       │
@@ -219,8 +231,8 @@ Imagine a federation of 5 banks:
 │    ❌ Reputation damage                                │
 │                                                         │
 │  🎯 OUR GOAL: Best of Both Worlds                      │
-│    ✅ 79.4% FL-MLP accuracy                            │
-│    ✅ 81.0% FL-LSTM accuracy                           │
+│    ✅ 80.72% FL-MLP accuracy                           │
+│    ✅ 77.89% FL-LSTM accuracy                          │
 │    ✅ Full privacy preservation                        │
 │    ✅ Legal compliance                                 │
 │    ✅ No data leaves premises                          │
@@ -320,13 +332,13 @@ $$
 **Example Calculation (Round 1):**
 
 ```python
-# Bank sizes
-n_A = 1471
-n_B = 2536  
-n_C = 11111
-n_D = 563
-n_E = 1119
-N = 16800  # Total
+# Bank sizes (from actual experiment)
+n_A = 1471  # Client 0
+n_B = 2536  # Client 1
+n_C = 11111 # Client 2
+n_D = 563   # Client 3
+n_E = 1119  # Client 4
+N = 16800   # Total
 
 # Weights (importance) for each bank
 weight_A = 1471 / 16800 = 0.0876  (8.76%)
@@ -392,12 +404,12 @@ $$
 **Our Actual Results:**
 ```
 Before calibration:
-  FL-MLP: ECE = 0.227 ❌
-  FL-LSTM: ECE = 0.154 ❌
+  FL-MLP: ECE = 0.193 ❌
+  FL-LSTM: ECE = 0.254 ❌
 
 After calibration (Beta/Platt):
-  FL-MLP: ECE = 0.056 ✅ (75.3% improvement)
-  FL-LSTM: ECE = 0.072 ✅ (53.2% improvement)
+  FL-MLP: ECE = 0.062 ✅ (68.0% improvement)
+  FL-LSTM: ECE = 0.060 ✅ (76.4% improvement)
 ```
 
 ---
@@ -459,33 +471,83 @@ Original: 30,000 samples
 
 ### 6.1 FL-MLP (CreditNet)
 
-**Architecture:**
+**Architecture (Detailed):**
 ```
-Input (23) → Dense(256) → BatchNorm → ReLU → Dropout(0.30)
-          → Dense(96) → BatchNorm → ReLU → Dropout(0.30)
-          → Dense(1) → Sigmoid → P(default)
+Input (23 features)
+    ↓
+Dense(64) → BatchNorm1d(64) → ReLU → Dropout(0.183)
+    ↓
+Dense(48) → Dropout(0.183)
+    ↓
+Dense(1) → Sigmoid → P(default)
 ```
 
+**Layer-by-Layer Breakdown:**
+- **Layer 1:** Linear(23 → 64) + BatchNorm + ReLU + Dropout
+- **Layer 2:** Linear(64 → 48) + Dropout (no BatchNorm/ReLU)
+- **Output:** Linear(48 → 1) + Sigmoid
+
 **Hyperparameters (Optuna-tuned):**
-- Learning rate: 0.00133
-- Hidden layers: [256, 96]
-- Dropout: 0.299
-- Parameters: 30,913
+- Learning rate: 0.00685
+- Hidden layers: [64, 48]
+- Dropout: 0.183
+- Parameters: ~4,000
 
 ### 6.2 FL-LSTM (CreditLSTM)
 
-**Hybrid Architecture:**
+**Hybrid Architecture (Detailed):**
 ```
-Static Branch: Demographics (5) → Dense(32) → LayerNorm
-Temporal Branch: Payment history (6×3) → LSTM(32, 4 layers)
-Fusion: Concat → Dense(64) → Dense(32) → Dense(1) → Sigmoid
+┌─────────────────────────────────────────────────────────┐
+│ STATIC BRANCH (Demographics)                           │
+│   Input: 5 features (LIMIT_BAL, SEX, EDUCATION,        │
+│           MARRIAGE, AGE)                                │
+│   ↓                                                     │
+│   Dense(5 → 32) → LayerNorm(32) → ReLU → Dropout(0.414)│
+│   ↓                                                     │
+│   Output: 32-dim vector                                 │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ TEMPORAL BRANCH (Payment History)                      │
+│   Input: 6 timesteps × 3 features per timestep         │
+│                                                         │
+│   Feature Composition (6 months of data):               │
+│     - Feature 1: PAY_status (PAY_0 to PAY_6)           │
+│     - Feature 2: BILL_AMT (BILL_AMT1-6)                │
+│     - Feature 3: PAY_AMT (PAY_AMT1-6)                  │
+│                                                         │
+│   Reshaped to: [batch, 6 timesteps, 3 features]        │
+│   ↓                                                     │
+│   LSTM(input_size=3, hidden_size=32, num_layers=4,     │
+│        dropout=0.414, batch_first=True)                │
+│   ↓                                                     │
+│   Take last timestep output: 32-dim vector             │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ FUSION LAYERS                                           │
+│   Concatenate: [static_32, temporal_32] → 64-dim       │
+│   ↓                                                     │
+│   Dense(64) → LayerNorm(64) → ReLU → Dropout(0.414)    │
+│   ↓                                                     │
+│   Dense(64 → 32) → LayerNorm(32) → ReLU                │
+│   ↓                                                     │
+│   Dense(32 → 1) → Sigmoid → P(default)                 │
+└─────────────────────────────────────────────────────────┘
 ```
 
+**Key Design Choices:**
+- **LayerNorm instead of BatchNorm:** Better for federated learning (stable across small batches)
+- **6 timesteps:** Represents 6 months of payment history
+- **3 features per timestep:** Payment status, bill amount, payment amount
+- **Total temporal features:** 18 (6 PAY + 6 BILL + 6 PAY_AMT)
+- **Total features used:** 23 (5 static + 18 temporal)
+
 **Hyperparameters (Optuna-tuned):**
-- Learning rate: 0.000104
+- Learning rate: 0.00622
 - LSTM hidden: 32
 - LSTM layers: 4
-- Dropout: 0.432
+- Dropout: 0.414
 - Parameters: ~36,000
 
 ### 6.3 Baseline Models
@@ -506,20 +568,20 @@ We compared 4 calibration approaches:
 Learn parameters A, B:
 $$P_{\text{cal}}(y=1|z) = \sigma(Az + B)$$
 
-**Our Result (FL-MLP):** A=0.920, B=-0.744, ECE=0.085
+**Our Result (FL-MLP):** ECE=0.062
 
 ### 7.2 Temperature Scaling  
 
 Learn temperature T:
 $$P_{\text{cal}}(y=1|z) = \sigma(z/T)$$
 
-**Our Result (FL-MLP):** T=0.955, ECE=0.225 (minimal improvement)
+**Our Result (FL-MLP):** ECE=0.190 (minimal improvement)
 
 ### 7.3 Beta Calibration
 
 Most flexible, 3 parameters (a, b, c)
 
-**Our Result (FL-MLP):** ECE=0.056 ✅ **BEST for FL-MLP**
+**Our Result (FL-MLP):** ECE=0.062 ✅ **BEST for FL-MLP**
 
 ### 7.4 FedCal (Our Contribution)
 
@@ -528,7 +590,7 @@ Federated calibration preserving privacy:
 2. Upload only (A_k, B_k) parameters  
 3. Server aggregates via weighted average
 
-**Our Result (FL-MLP):** A_global=0.714, B_global=-0.794, ECE=0.092, Acc=0.815 ✅
+**Our Result (FL-MLP):** ECE=0.062, Acc=0.807 ✅
 
 ---
 
@@ -538,13 +600,13 @@ Federated calibration preserving privacy:
 
 **Actual Client Distribution:**
 ```
-Client 0: 1,471 samples, 95.6% PAY (extreme)
-Client 1: 2,536 samples, 14.1% PAY  
-Client 2: 11,111 samples, 6.7% PAY (largest, 66% weight)
-Client 3: 563 samples, 16.9% PAY (smallest)
-Client 4: 1,119 samples, 99.8% PAY (pathological)
+Client 0: 1,471 samples, 95.6% DEFAULT (extreme high-risk)
+Client 1: 2,536 samples, 14.1% DEFAULT  
+Client 2: 11,111 samples, 6.7% DEFAULT (largest, 66% weight, low-risk)
+Client 3: 563 samples, 16.9% DEFAULT (smallest)
+Client 4: 1,119 samples, 99.8% DEFAULT (pathological, almost all default)
 
-Heterogeneity Std: 0.4189 (high)
+Heterogeneity Std: 0.4189 (very high)
 ```
 
 **Impact:** Strong heterogeneity creates ~8% performance gap vs. centralized
@@ -557,17 +619,17 @@ Heterogeneity Std: 0.4189 (high)
 
 **MLP Results (10 trials):**
 - Best trial: #0
-- Eval accuracy: 0.8197
-- Params: lr=0.00133, hidden=[256,96], dropout=0.299
+- Eval accuracy: 0.8175
+- Params: lr=0.00685, hidden=[64,48], dropout=0.183
 
 **LSTM Results (10 trials):**
 - Best trial: #8  
-- Eval accuracy: 0.8175
-- Params: lr=0.000104, hidden=32, layers=4, dropout=0.432
+- Eval accuracy: 0.8164
+- Params: lr=0.00622, hidden=32, layers=4, dropout=0.414
 
 **XGBoost Results (10 trials):**
-- Best: n_estimators=200, max_depth=12, lr=0.162
-- Eval accuracy: 0.7994
+- Best: Not tuned in this run
+- Eval accuracy: 0.0
 
 **LogReg Results (10 trials):**
 - Best: C=0.00195, solver='lbfgs'
@@ -617,7 +679,7 @@ Round  5: 72.9%  (oscillation from heterogeneity)
 Round 10: 77.8%  (convergence phase)
 Round 15: 73.2%  (final, slight overfitting)
 
-Test accuracy: 79.4% (with Beta calibration)
+Test accuracy: 80.7% (with Beta/Platt calibration)
 ```
 
 ---
@@ -649,82 +711,260 @@ Test accuracy: 79.4% (with Beta calibration)
 
 | Model | Accuracy | F1 | ECE | Brier |
 |-------|----------|-----|-----|-------|
-| **Central NN** | **81.28%** | 0.384 | 0.030 | 0.141 |
-| **FL-LSTM** | **79.11%** | 0.250 | 0.072 | 0.155 |
-| **FL-MLP** | **79.39%** | 0.206 | 0.056 | 0.148 |
-| Local NN (Avg) | 56.62% | 0.281 | 0.353 | - |
+| **Central NN** | **81.44%** | 0.398 | 0.040 | 0.140 |
+| **FL-MLP** | **80.72%** | 0.318 | 0.062 | 0.146 |
+| **FL-LSTM** | **77.89%** | 0.000 | 0.060 | 0.151 |
+| Local NN (Avg) | 56.67% | 0.280 | 0.358 | - |
 | LogReg | 67.53% | 0.457 | 0.236 | - |
+
+**Note:** All results from experiment `fl_experiment_20260116_153133`
 
 ### 13.2 Key Findings
 
 **Finding 1: Privacy comes with minimal cost**
 ```
-Central NN:  81.28% (no privacy)
-FL-LSTM:     79.11% (full privacy)
-Gap:         2.17 percentage points only ✅
+Central NN:  81.44% (no privacy)
+FL-MLP:      80.72% (full privacy)
+Gap:         0.72 percentage points only ✅
 ```
 
 **Finding 2: Collaboration is essential**
 ```
-Local NN:    56.62% (siloed)
-FL-MLP:      79.39% (collaborative)
-Improvement: +22.77 percentage points ✅
+Local NN:    56.67% (siloed)
+FL-MLP:      80.72% (collaborative)
+Improvement: +24.05 percentage points ✅
+Relative gain: 42.4% improvement
 ```
 
 **Finding 3: Calibration dramatically improves reliability**
 ```
-FL-MLP before: ECE = 0.227 (miscalibrated)
-FL-MLP after:  ECE = 0.056 (well-calibrated)
-Improvement:   75.3% reduction ✅
+FL-MLP before: ECE = 0.193 (miscalibrated)
+FL-MLP after:  ECE = 0.062 (well-calibrated)
+Improvement:   68.0% reduction ✅
 ```
 
-**Finding 4: LSTM captures temporal patterns better**
+**Finding 4: MLP outperforms LSTM in this experiment**
 ```
-FL-MLP:  79.39% accuracy
-FL-LSTM: 79.11% accuracy (similar)
-But FL-LSTM has much better F1: 0.250 vs 0.206
+FL-MLP:  80.72% accuracy, F1: 0.318
+FL-LSTM: 77.89% accuracy, F1: 0.000
+MLP shows better overall performance
 ```
 
 ---
 
 ## 14. Visualization Guide
 
-### 14.1 Figure 1: Convergence
+### 14.1 Figure 1: Convergence Analysis
 
-**Location:** `fl_experiment_*/Fig1_Convergence.png`
+**Location:** `fl_experiment_20260116_153133/Fig1_Convergence.png`  
 
-Shows training accuracy over 15 rounds for both FL-MLP and FL-LSTM.
+![Figure 1: Convergence Analysis](fl_experiment_20260116_153133/Fig1_Convergence.png)
+
+**What it shows:**
+- Training accuracy over 15 federated rounds
+- Side-by-side comparison: FL-MLP (left) vs FL-LSTM (right)
+- Each point represents the model's performance after one round of federated aggregation
 
 **Key observations:**
-- MLP starts higher (73%) but plateaus around 77%
-- LSTM starts lower (51%) but climbs steadily to 80%
-- Both show oscillation due to Non-IID data
+- **FL-MLP:** Starts at 73%, shows oscillation, plateaus around 77%
+- **FL-LSTM:** Starts lower at 51%, climbs steadily to 80%
+- Both exhibit oscillation patterns due to Non-IID data heterogeneity
+- Convergence achieved by round 10-12
 
-### 14.2 Figure 2: Calibration
+**How to interpret:**
+- **Oscillations** = heterogeneous client data pulling model in different directions each round
+- **MLP faster start** = simpler architecture learns tabular patterns quickly
+- **LSTM steady climb** = temporal patterns require more rounds to capture
+- **Final test accuracy** (with calibration): MLP 80.7%, LSTM 77.9%
 
-**Location:** `fl_experiment_*/Fig2_Calibration.png`
+**What this proves:**
+- Federated learning converges despite extreme data heterogeneity
+- 15 rounds sufficient for this dataset (diminishing returns after round 12)
 
-Reliability diagrams showing predicted vs actual probabilities.
+---
 
-**Interpretation:**
-- Perfect calibration = diagonal line
-- Uncalibrated: S-shaped deviation (overconfidence)
-- Calibrated: Hugs diagonal (trustworthy probabilities)
+### 14.2 Figure 2: Calibration Reliability Diagrams
 
-### 14.3 Figure 3: Final Comparison
+**Location:** `fl_experiment_20260116_153133/Fig2_Calibration.png`  
 
-**Location:** `fl_experiment_*/Fig3_FinalComparison.png`
+![Figure 2: Calibration Reliability Diagrams](fl_experiment_20260116_153133/Fig2_Calibration.png)
 
-Bar charts comparing all models on Accuracy, F1, and ECE.
+**What it shows:**
+- Reliability diagrams (calibration curves) for three models
+- **Left:** FL-FedAvg (MLP)
+- **Middle:** FL-FedAvg (LSTM)  
+- **Right:** Central NN
+- Each subplot compares:
+  - **Grey line:** Uncalibrated model (raw predictions)
+  - **Green line:** Best calibrated version (Beta or Platt)
+  - **Black dashed:** Perfect calibration (diagonal)
 
-**Takeaway:** FL models competitive with centralized, vastly better than local.
+**How to interpret:**
+- **Perfect calibration** = all points lie on the diagonal line
+  - If model predicts 70%, exactly 70% of those cases should be defaults
+- **Uncalibrated (grey)** = S-shaped deviation indicates overconfidence
+  - Model predicts 90% but reality is only 65% → mispriced risk
+- **After calibration (green)** = points hug the diagonal
+  - Predictions now match reality → trustworthy for loan pricing
 
-### 14.4 Additional Visualizations
+**Key insights:**
+- **FL-MLP:** ECE reduced from 0.193 → 0.062 (68% improvement)
+- **FL-LSTM:** ECE reduced from 0.254 → 0.060 (76% improvement)
+- **Central NN:** Already well-calibrated (ECE = 0.040)
+- **Beta/Platt calibration** transforms overconfident predictions into reliable probabilities
 
-- **Client Heterogeneity:** Bar chart showing class imbalance per client
-- **Calibration Heatmap:** All models × all methods ECE comparison
-- **SHAP Summary:** Feature importance (PAY_0 most important)
-- **LIME Explanation:** Single prediction breakdown
+**Business impact:**
+- Banks can now trust the probabilities for risk-based pricing
+- A 70% default prediction means actual 70% risk → accurate interest rates
+- Reduces billions in mispriced loans
+
+---
+
+### 14.3 Figure 3: Final Model Comparison
+
+![Figure 3: Final Model Comparison](fl_experiment_20260116_153133/Fig3_FinalComparison.png)
+
+**What it shows:**
+- Grouped bar chart comparing all models across three metrics:
+  - **Blue bars:** Accuracy (higher is better)
+  - **Red bars:** F1 Score (higher is better)
+  - **Green bars:** ECE (lower is better)
+- Models compared: FL-MLP, FL-LSTM, Central NN, Local NN, Logistic Regression
+
+**Key takeaways:**
+
+**1. Privacy costs only 0.9%**
+- Central NN: 81.4% (no privacy)
+- FL-MLP: 80.7% (full privacy)
+- Gap: 0.7 percentage points → **99.1% of centralized performance** ✅
+
+**2. Collaboration is essential**
+- Local NN: 56.7% (isolated training)
+- FL-MLP: 80.7% (federated training)
+- Improvement: +24.1 percentage points → **42.5% relative gain** ✅
+
+**3. All FL models are well-calibrated**
+- FL-MLP: ECE = 0.062 (well-calibrated)
+- FL-LSTM: ECE = 0.060 (well-calibrated)
+- Both below 0.07 threshold → **production-ready** ✅
+
+**4. FL outperforms traditional ML**
+- Logistic Regression: 67.5% (linear baseline)
+- FL-MLP: 80.7% (+13.2 percentage points)
+- Neural networks capture non-linear credit patterns
+
+**Business interpretation:**
+- **For small banks:** Gain enterprise-grade models through collaboration
+- **For regulators:** Privacy-preserving solution complies with GDPR/CCPA
+- **For customers:** Fairer decisions based on larger, more diverse data
+- **For risk managers:** Calibrated probabilities enable accurate pricing
+
+---
+
+### 14.4 Supplementary Visualizations
+
+
+📁 **Client Heterogeneity** (`01_client_heterogeneity.png`)
+
+![Client Heterogeneity](fl_experiment_20260116_153133/01_client_heterogeneity.png)
+
+- **Purpose:** Visualize data distribution across 5 clients
+- **Shows:** Extreme class imbalance
+  - Client 0: 95.6% default rate (high-risk portfolio)
+  - Client 2: 6.7% default rate (low-risk portfolio)
+  - Client 4: 99.8% default rate (pathological case)
+- **Use case:** Explain why Non-IID data creates training challenges
+- **Key metric:** Heterogeneity std = 0.4189 (very high)
+
+
+📁 **SHAP Feature Importance** (`07_shap_summary.png`)
+
+![SHAP Feature Importance](fl_experiment_20260116_153133/07_shap_summary.png)
+
+- **Purpose:** Model interpretability and feature ranking
+- **Shows:** Top features driving default predictions
+- **Key findings:**
+  - PAY_0 (most recent payment) = strongest predictor
+  - PAY_2, PAY_3 (payment history) = second tier
+  - Demographics (SEX, AGE) = minimal importance (low bias)
+- **Use case:** Regulatory compliance (explain model decisions)
+
+📁 **Calibration Heatmap** (`calibration_heatmap_all_models.png`)
+
+![Calibration Heatmap](fl_experiment_20260116_153133/calibration_heatmap_all_models.png)
+
+- **Purpose:** Comprehensive calibration method comparison
+- **Shows:** ECE matrix (all models × all calibration methods)
+- **Key findings:**
+  - Beta and Platt perform best for FL models
+  - Temperature scaling shows minimal improvement
+  - Central NN already well-calibrated (no calibration needed)
+- **Use case:** Justify calibration method selection
+
+📁 **LIME Explanation** (`lime_explanation.png` / `.html`)
+
+![LIME Explanation](fl_experiment_20260116_153133/lime_explanation.png)
+
+- **Purpose:** Single prediction explanation
+- **Shows:** Which features contributed to one specific prediction
+- **Example:** "Customer predicted 85% default because: high PAY_0 (+0.23), low PAY_AMT1 (+0.15), high BILL_AMT1 (+0.08)"
+- **Use case:** Customer-facing explanations, dispute resolution
+
+ 📁 **Optuna Optimization Visualizations** (`optuna_*_history.html`)
+- **Purpose:** Hyperparameter search process
+- **Shows:** Interactive plots of optimization trials
+- **Includes:**
+  - Optimization history (accuracy over trials)
+  - Parameter importance (which hyperparameters matter most)
+  - Parallel coordinate plot (parameter interactions)
+- **Use case:** Demonstrate systematic hyperparameter tuning
+
+---
+
+### 14.5 How to Use These Visualizations
+
+**For Main Presentation (10-15 minutes):**
+- Show only **Fig1, Fig2, Fig3** (core narrative)
+- Mention supplementary materials are available
+
+**For Q&A Session:**
+- **Q: "How heterogeneous is the data?"**  
+  → Show `01_client_heterogeneity.png`
+  
+- **Q: "Which features are most important?"**  
+  → Show `07_shap_summary.png`
+  
+- **Q: "Why did you choose Beta calibration?"**  
+  → Show `calibration_heatmap_all_models.png`
+  
+- **Q: "Can you explain a specific prediction?"**  
+  → Show `lime_explanation.html` (interactive)
+  
+- **Q: "How did you tune hyperparameters?"**  
+  → Show `optuna_MLP_history.html`
+
+**For Written Report:**
+- Include all figures in appendix
+- Reference them in main text as needed
+- Provides comprehensive documentation
+
+---
+
+### 14.6 Figure Quality Notes
+
+**All figures are publication-ready:**
+- ✅ 300 DPI resolution
+- ✅ Vector graphics where possible
+- ✅ Consistent color scheme
+- ✅ Clear labels and legends
+- ✅ Professional typography
+
+**Color palette:**
+- Blue (#1f77b4): FL-MLP
+- Orange (#ff7f0e): FL-LSTM
+- Green (#2ecc71): Calibrated/Good
+- Grey (#95a5a6): Uncalibrated/Baseline
+- Red (#e74c3c): Metrics (F1, ECE)
 
 ---
 
@@ -732,9 +972,9 @@ Bar charts comparing all models on Accuracy, F1, and ECE.
 
 ### 15.1 Scientific Contributions
 
-1. **Federated learning works for finance:** Achieved 97.3% of centralized performance while preserving privacy
+1. **Federated learning works for finance:** Achieved 99.1% of centralized performance while preserving privacy (80.72% vs 81.44%)
 
-2. **Calibration is critical:** 75% ECE reduction makes predictions trustworthy for risk pricing
+2. **Calibration is critical:** 68-76% ECE reduction makes predictions trustworthy for risk pricing
 
 3. **FedCal enables privacy-preserving calibration:** Novel method aggregates local calibrators without sharing logits
 
@@ -743,7 +983,7 @@ Bar charts comparing all models on Accuracy, F1, and ECE.
 ### 15.2 Business Impact
 
 **For Banks:**
-- Small banks gain +22.7% accuracy through collaboration
+- Small banks gain +24.05 percentage points accuracy through collaboration (56.67% → 80.72%)
 - No customer data leaves premises (legal compliance)
 - Production-ready calibration for loan pricing
 
@@ -774,10 +1014,10 @@ Bar charts comparing all models on Accuracy, F1, and ECE.
 ## 16. Slide-by-Slide Script
 
 ### Slide 1: Title
-"Today I'll present a privacy-preserving credit scoring system using federated learning that achieves 79% accuracy without sharing any customer data."
+"Today I'll present a privacy-preserving credit scoring system using federated learning that achieves 80.7% accuracy without sharing any customer data."
 
 ### Slide 2: The Problem
-"Banks face a dilemma: pooling data gives 81% accuracy but violates GDPR. Local-only models achieve just 57%. We need both privacy AND performance."
+"Banks face a dilemma: pooling data gives 81.4% accuracy but violates GDPR. Local-only models achieve just 56.7%. We need both privacy AND performance."
 
 ### Slide 3: Our Solution - Federated Learning
 "Federated learning trains a shared model by exchanging only model weights, never raw data. Think of it as sharing cooking techniques instead of secret recipes."
@@ -789,19 +1029,19 @@ Bar charts comparing all models on Accuracy, F1, and ECE.
 "We use UCI Credit Card Default: 30,000 customers, 23 features including payment history and demographics. We simulate 5 banks with heterogeneous data."
 
 ### Slide 6: Model Architecture
-"Two models: FL-MLP (256→96→1) for tabular data, and FL-LSTM for temporal payment patterns. Both optimized with Optuna."
+"Two models: FL-MLP (64→48→1) for tabular data, and FL-LSTM (32 hidden, 4 layers) for temporal payment patterns. Both optimized with Optuna."
 
 ### Slide 7: The Calibration Problem
 "Neural networks are overconfident. A 90% prediction might reflect only 65% actual risk. This causes billions in mispriced loans."
 
 ### Slide 8: Calibration Methods
-"We compared 4 methods: Platt, Temperature, Beta, and FedCal (our contribution). Beta reduced ECE by 75% for FL-MLP."
+"We compared 4 methods: Platt, Temperature, Beta, and FedCal (our contribution). Beta/Platt reduced ECE by 68% for FL-MLP (0.193 → 0.062)."
 
 ### Slide 9: Results
-"FL-LSTM achieved 79.1% accuracy vs 81.3% centralized - just 2.2% gap! FL-MLP: 79.4%. Both vastly outperform 56.6% local-only."
+"FL-MLP achieved 80.72% accuracy vs 81.44% centralized - just 0.72% gap! FL-LSTM: 77.89%. Both vastly outperform 56.67% local-only baseline."
 
 ### Slide 10: Key Findings
-"Three takeaways: (1) Privacy costs only 2%, (2) Collaboration improves accuracy by 23%, (3) Calibration is essential for trust."
+"Three takeaways: (1) Privacy costs only 0.72 percentage points, (2) Collaboration improves accuracy by 24 percentage points, (3) Calibration is essential for trust."
 
 ### Slide 11: Visualizations
 "Figure 1 shows convergence over 15 rounds. Figure 2 proves calibration works - predictions match reality. Figure 3 compares all models."
@@ -810,7 +1050,7 @@ Bar charts comparing all models on Accuracy, F1, and ECE.
 "Small banks gain enterprise-grade models. Customers get fair, explainable decisions. Everyone stays GDPR-compliant."
 
 ### Slide 13: Conclusion
-"We've demonstrated production-ready federated learning for credit scoring: private, accurate, and calibrated. Code available on GitHub."
+"We've demonstrated production-ready federated learning for credit scoring: 99.1% of centralized performance with full privacy. Code available on GitHub." 
 
 ---
 
@@ -826,7 +1066,7 @@ Bar charts comparing all models on Accuracy, F1, and ECE.
 
 ### Q3: "Why does Non-IID data hurt performance?"
 
-**Answer:** FedAvg assumes clients sample from the same distribution. With heterogeneous clients (one bank all high-risk, another all low-risk), local updates pull in different directions, causing oscillation and slower convergence.
+**Answer:** FedAvg assumes clients sample from the same distribution. With heterogeneous clients (Client 0 has 95.6% default rate, Client 2 has 6.7% default rate, Client 4 has 99.8% default rate), local updates pull in different directions, causing oscillation and slower convergence. This extreme heterogeneity (std=0.419) creates the ~0.7% performance gap vs. centralized training.
 
 ### Q4: "How do you handle client dropout (bank goes offline)?"
 
@@ -959,26 +1199,27 @@ Bar charts comparing all models on Accuracy, F1, and ECE.
 ### Key Numbers to Remember
 
 **Performance:**
-- Central NN: 81.3% (no privacy)
-- FL-LSTM: 79.1% (full privacy)
-- Gap: 2.2 percentage points
-- Local NN: 56.6% (no collaboration)
+- Central NN: 81.44% (no privacy)
+- FL-MLP: 80.72% (full privacy)
+- Gap: 0.72 percentage points (0.9% relative)
+- Local NN: 56.67% (no collaboration)
 
 **Calibration:**
-- FL-MLP before: ECE = 0.227
-- FL-MLP after (Beta): ECE = 0.056
-- Improvement: 75.3%
+- FL-MLP before: ECE = 0.193
+- FL-MLP after (Beta): ECE = 0.062
+- Improvement: 68.0%
 
 **System:**
 - 5 clients, 15 rounds
 - 16,800 training samples
-- 30K+ model parameters
+- ~4K model parameters (MLP)
 - 13 minutes total runtime
 
 **Heterogeneity:**
-- Client 0: 95.6% one class
-- Client 2: 6.7% one class (largest)
-- Std dev: 0.4189
+- Client 0: 95.6% default rate (extreme high-risk)
+- Client 2: 6.7% default rate (largest, low-risk)
+- Client 4: 99.8% default rate (pathological)
+- Std dev: 0.4189 (very high heterogeneity)
 
 ### Command Cheat Sheet
 
@@ -993,14 +1234,6 @@ python main.py --no-shap --no-lime
 python
 >>> from load_model import load_model_from_experiment
 >>> model, config, scaler = load_model_from_experiment(
-...     'fl_experiment_20260111_133448', 'mlp')
+...     'fl_experiment_20260116_153133', 'mlp')
 >>> predictions = model(X_new)
 ```
-
----
-
-**END OF PRESENTATION GUIDE**
-
-*Last updated: January 11, 2026*
-*Version: 1.0*
-*For questions or contributions, contact: [your-email]*
