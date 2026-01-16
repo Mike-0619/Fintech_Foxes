@@ -1,0 +1,4 @@
+Model,Best_Accuracy_Method,Best_Accuracy_Value,Best_F1_Method,Best_F1_Value,Best_ECE_Method,Best_ECE_Value,Best_Brier_Method,Best_Brier_Value
+FL-FedAvg (MLP),Platt,0.793889,Uncalibrated,0.501196,Platt,0.060705,Platt,0.147842
+FL-FedAvg (LSTM),Platt,0.778889,Uncalibrated,0.466061,Platt,0.060486,Beta,0.150205
+Central NN,Uncalibrated,0.816389,Uncalibrated,0.452361,Uncalibrated,0.018795,Uncalibrated,0.139023

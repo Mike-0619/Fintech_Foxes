@@ -1,0 +1,31 @@
+{
+  "MLP": {
+    "params": {
+      "lr": 0.006847920095574782,
+      "hidden1": 64,
+      "hidden2": 48,
+      "dropout": 0.18318092164684585
+    },
+    "score": 0.8175
+  },
+  "LSTM": {
+    "params": {
+      "lr": 0.00621870472776908,
+      "hidden": 32,
+      "layers": 4,
+      "dropout": 0.41436875457596467
+    },
+    "score": 0.8163888888888889
+  },
+  "XGBOOST": {
+    "params": {},
+    "score": 0.0
+  },
+  "LogisticRegression": {
+    "params": {
+      "C": 0.0019517224641449498,
+      "solver": "lbfgs"
+    },
+    "score": 0.6927777777777778
+  }
+}
